@@ -104,6 +104,8 @@ class MT5AnalyzerApp(tk.Tk):
         self.share_tree.grid(row=4, column=0, sticky="nsew", padx=4)
         self.symbol_perf_tree = self._make_tree(self.dashboard_tab, ("Symbol", "Pozic", "Weighted %", "Profit", "Hodnota", "Best %", "Worst %"), height=6)
         self.symbol_perf_tree.grid(row=4, column=1, sticky="nsew", padx=4)
+        self.symbol_history_canvas = tk.Canvas(self.dashboard_tab, height=300, bg="white")
+        self.symbol_history_canvas.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=4, pady=8)
 
     def _build_analysis_tab(self) -> None:
         ttk.Label(self.analysis_tab, text="Analýzy se ukládají do Analyses.csv v MT5 Common Files složce. Přidání/upravení/smazání je přes horní tlačítka.").pack(anchor="w")
@@ -377,6 +379,7 @@ class MT5AnalyzerApp(tk.Tk):
         self._draw_horizontal_bar_chart(self.performance_canvas, {r.symbol: r.weighted_percent_from_open for r in perf_rows}, "Výkon akcií v % vůči sobě")
         self._draw_horizontal_bar_chart(self.analysis_canvas, self._analysis_chart_data(), "Výkon analyzovaných akcií v %")
         self._draw_line_chart(self.profit_canvas, summary.profit_history, "Vývoj profitu MT5 portfolia v čase")
+        self._draw_multi_line_chart(self.symbol_history_canvas, summary.symbol_performance_history, summary.symbol_rows, "Porovnání zisku/ztráty akcií v portfoliu v čase")
 
     def _select_symbol_rows(self, rows):
         sorted_rows = sorted(rows, key=lambda r: r.weighted_percent_from_open, reverse=True)
@@ -448,6 +451,45 @@ class MT5AnalyzerApp(tk.Tk):
             x=40+i*(w-70)/(len(data)-1); y=h-35-(v-mn)/span*(h-70); pts.extend([x,y])
         canvas.create_line(*pts, fill="#2f80ed", width=2)
         canvas.create_text(45,35,anchor="w",text=f"max {mx:.2f}"); canvas.create_text(45,h-25,anchor="w",text=f"min {mn:.2f}")
+
+    def _draw_multi_line_chart(self, canvas: tk.Canvas, series: dict[str, list[tuple]], current_rows, title: str) -> None:
+        canvas.delete("all"); canvas.update_idletasks(); w=max(canvas.winfo_width(), 700); h=max(canvas.winfo_height(), 280)
+        canvas.create_text(w/2, 16, text=title, font=("Segoe UI", 11, "bold"))
+        if not series:
+            canvas.create_text(w/2, h/2, text="Žádná historie procentuálního výkonu")
+            return
+        preferred = [r.symbol for r in sorted(current_rows, key=lambda r: r.share_pct, reverse=True)[:8]]
+        symbols = preferred or sorted(series.keys())[:8]
+        points = [(t, v) for sym in symbols for t, v in series.get(sym, [])]
+        if len(points) < 2:
+            canvas.create_text(w/2, h/2, text="Málo bodů pro časový graf")
+            return
+        times = sorted({t for t, _ in points})
+        values = [v for _, v in points]
+        min_v = min(values + [0]); max_v = max(values + [0]); span = max_v - min_v or 1
+        left=65; right=w-150; top=42; bottom=h-45
+        zero_y = bottom - (0 - min_v) / span * (bottom - top)
+        canvas.create_line(left, zero_y, right, zero_y, fill="#777", dash=(3, 3))
+        canvas.create_line(left, top, left, bottom, fill="#999")
+        canvas.create_line(left, bottom, right, bottom, fill="#999")
+        colors=["#2f80ed", "#eb5757", "#27ae60", "#f2994a", "#9b51e0", "#56ccf2", "#6fcf97", "#bb6bd9"]
+        time_index={t:i for i,t in enumerate(times)}
+        for idx, sym in enumerate(symbols):
+            pts=[]
+            for t, v in series.get(sym, []):
+                x = left + time_index[t] * (right-left) / max(1, len(times)-1)
+                y = bottom - (v - min_v) / span * (bottom-top)
+                pts.extend([x,y])
+            if len(pts) >= 4:
+                canvas.create_line(*pts, fill=colors[idx % len(colors)], width=2)
+                for x,y in zip(pts[0::2], pts[1::2]):
+                    canvas.create_oval(x-3, y-3, x+3, y+3, fill=colors[idx % len(colors)], outline="white")
+            canvas.create_text(right+12, top+idx*18, anchor="w", text=sym, fill=colors[idx % len(colors)])
+        canvas.create_text(left, top-12, anchor="w", text=f"max {max_v:+.1f} %")
+        canvas.create_text(left, bottom+16, anchor="w", text=f"min {min_v:+.1f} %")
+        if times:
+            canvas.create_text(left, h-18, anchor="w", text=times[0].strftime("%d.%m %H:%M"))
+            canvas.create_text(right, h-18, anchor="e", text=times[-1].strftime("%d.%m %H:%M"))
 
 
 def main() -> None:

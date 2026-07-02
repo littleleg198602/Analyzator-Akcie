@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from analysis_engine import AnalysisResult
-from mt5_data import PortfolioPosition, SymbolPortfolioRow, aggregate_by_symbol, portfolio_stats, profit_history_by_snapshot
+from mt5_data import PortfolioPosition, SymbolPortfolioRow, aggregate_by_symbol, portfolio_stats, profit_history_by_snapshot, symbol_performance_history
 
 
 @dataclass
@@ -31,6 +31,7 @@ class DashboardSummary:
     negative_count: int
     symbol_rows: list[SymbolPortfolioRow]
     profit_history: list[tuple]
+    symbol_performance_history: dict[str, list[tuple]]
     uses_estimated_share: bool
     uses_average_performance: bool
 
@@ -72,6 +73,7 @@ def build_summary(results: list[AnalysisResult], current_positions: list[Portfol
         negative_count=int(stats["negative_count"] or 0),
         symbol_rows=symbol_rows,
         profit_history=profit_history_by_snapshot(all_positions),
+        symbol_performance_history=symbol_performance_history(all_positions),
         uses_estimated_share=any(row.value_source == "EstimatedValue" for row in symbol_rows),
         uses_average_performance=any(row.value_source == "EstimatedValue" for row in symbol_rows),
     )

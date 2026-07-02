@@ -36,3 +36,5 @@ CSV soubory nenechávej otevřené v Excelu. MT5 by do zamčeného souboru nemus
 - Aktuální portfolio, dashboard a grafy používají pouze řádky z nejnovějšího `SnapshotTime`, ne celou historii.
 - Pokud MT5 EA neposílá `ExposureValue` nebo `MarketValue`, aplikace použije odhad `ABS(Volume * CurrentPrice)` a zobrazí českou poznámku.
 - Export do Excelu vytvoří `.xlsx` přímo z aplikace tlačítkem `Export do Excelu`.
+
+- Dashboard nově kreslí časový graf „Porovnání zisku/ztráty akcií v portfoliu v čase“, kde každá akcie začne až od snapshotu, ve kterém se objevila v MT5 portfoliu.

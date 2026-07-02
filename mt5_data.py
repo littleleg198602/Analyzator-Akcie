@@ -189,3 +189,28 @@ def portfolio_stats(positions: list[PortfolioPosition]) -> dict[str, float | int
         "positive_count": sum(1 for v in values if v > 0),
         "negative_count": sum(1 for v in values if v < 0),
     }
+
+def symbol_performance_history(positions: list[PortfolioPosition]) -> dict[str, list[tuple[datetime, float]]]:
+    """Vrátí časovou řadu procentuálního výkonu podle symbolu přes historii snapshotů.
+
+    Pro každý SnapshotTime agreguje otevřené tickety stejného symbolu. Pokud je
+    dostupný ExposureValue/MarketValue, použije vážený průměr; jinak obyčejný
+    průměr PercentFromOpen. Symbol se v řadě objeví až od okamžiku, kdy se
+    v MT5 historii poprvé objevil, takže nově otevřené akcie začnou kreslit
+    čáru později.
+    """
+    by_time_symbol: dict[tuple[datetime, str], list[PortfolioPosition]] = defaultdict(list)
+    for pos in positions:
+        if pos.symbol:
+            by_time_symbol[(pos.snapshot_time, pos.symbol)].append(pos)
+
+    series: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
+    for (snapshot_time, symbol), items in sorted(by_time_symbol.items()):
+        weighted_base = sum(p.value_for_share for p in items if p.value_source != "EstimatedValue")
+        if weighted_base > 0:
+            value = sum(p.percent_from_open * p.value_for_share for p in items if p.value_source != "EstimatedValue") / weighted_base
+        else:
+            value = mean([p.percent_from_open for p in items]) if items else 0.0
+        series[symbol].append((snapshot_time, value))
+    return dict(series)
+

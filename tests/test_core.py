@@ -6,7 +6,7 @@ from analysis_engine import Analysis, evaluate_analyses, export_tracked_symbols,
 from config import AppConfig
 from dashboard import build_summary
 from excel_export import export_to_excel
-from mt5_data import aggregate_by_symbol, latest_snapshot_positions, load_portfolio, load_prices
+from mt5_data import aggregate_by_symbol, latest_snapshot_positions, load_portfolio, load_prices, symbol_performance_history
 from utils import parse_datetime, parse_float
 
 
@@ -43,6 +43,9 @@ def test_import_prices_portfolio_latest_snapshot_and_score_buy():
         assert summary.open_positions == 2
         assert summary.portfolio_profit == 141
         assert round(sum(r.share_pct for r in aggregate_by_symbol(current)), 6) == 100
+        history = symbol_performance_history(positions)
+        assert [round(v, 1) for _, v in history["AAPL"]] == [5.0, 10.1]
+        assert [round(v, 1) for _, v in history["MSFT"]] == [20.0]
         analysis = Analysis("a1", datetime(2026, 1, 1, 10), "AAPL", "BUY", 14, 100.1, 0, 0, "", "", "OPEN", "")
         result = evaluate_analyses(cfg, [analysis], prices)[0]
         assert round(result.return_1d or 0, 2) == 3.0

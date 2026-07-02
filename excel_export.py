@@ -37,5 +37,10 @@ def export_to_excel(folder: Path, analyses: list[Analysis], results: list[Analys
     sheet("Dashboard summary", ["Metrika", "Hodnota"], [["Celkem analýz", summary.total_analyses], ["Skórovatelné analýzy", summary.scorable_analyses], ["BUY hit rate", summary.buy_hit_rate], ["SHORT hit rate", summary.short_hit_rate], ["AVOID hit rate", summary.avoid_hit_rate], ["Aktuální profit MT5", summary.portfolio_profit], ["Počet otevřených pozic", summary.open_positions], ["Celková hodnota/expozice", summary.total_value]])
     sheet("Podíl v portfoliu", ["Symbol", "Hodnota pozice", "Podíl %", "Profit", "WeightedPercentFromOpen", "Zdroj hodnoty"], [[r.symbol, r.value, r.share_pct, r.profit, r.weighted_percent_from_open, r.value_source] for r in summary.symbol_rows])
     sheet("Výkon akcií v %", ["Symbol", "Počet pozic", "WeightedPercentFromOpen", "Profit", "Exposure/Estimated", "Nejlepší ticket %", "Nejhorší ticket %"], [[r.symbol, r.positions_count, r.weighted_percent_from_open, r.profit, r.value, r.best_ticket_pct, r.worst_ticket_pct] for r in summary.symbol_rows])
+    history_rows = []
+    for symbol, points in summary.symbol_performance_history.items():
+        for snapshot_time, percent in points:
+            history_rows.append([snapshot_time, symbol, percent])
+    sheet("Výkon akcií v čase", ["SnapshotTime", "Symbol", "PercentFromOpen"], history_rows)
     wb.save(path)
     return path
