@@ -195,22 +195,27 @@ def symbol_performance_history(positions: list[PortfolioPosition]) -> dict[str, 
 
     Pro každý SnapshotTime agreguje otevřené tickety stejného symbolu. Pokud je
     dostupný ExposureValue/MarketValue, použije vážený průměr; jinak obyčejný
-    průměr PercentFromOpen. Symbol se v řadě objeví až od okamžiku, kdy se
-    v MT5 historii poprvé objevil, takže nově otevřené akcie začnou kreslit
-    čáru později.
+    průměr PercentFromOpen. Každý symbol je normalizovaný na 0 % ve svém
+    prvním snapshotu, aby všechny čáry startovaly ze stejné linie a teprve
+    postupně se rozevíraly do plusu nebo mínusu.
     """
     by_time_symbol: dict[tuple[datetime, str], list[PortfolioPosition]] = defaultdict(list)
     for pos in positions:
         if pos.symbol:
             by_time_symbol[(pos.snapshot_time, pos.symbol)].append(pos)
 
-    series: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
+    raw_series: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
     for (snapshot_time, symbol), items in sorted(by_time_symbol.items()):
         weighted_base = sum(p.value_for_share for p in items if p.value_source != "EstimatedValue")
         if weighted_base > 0:
             value = sum(p.percent_from_open * p.value_for_share for p in items if p.value_source != "EstimatedValue") / weighted_base
         else:
             value = mean([p.percent_from_open for p in items]) if items else 0.0
-        series[symbol].append((snapshot_time, value))
-    return dict(series)
+        raw_series[symbol].append((snapshot_time, value))
+
+    normalized: dict[str, list[tuple[datetime, float]]] = {}
+    for symbol, points in raw_series.items():
+        first_value = points[0][1] if points else 0.0
+        normalized[symbol] = [(snapshot_time, value - first_value) for snapshot_time, value in points]
+    return normalized
 

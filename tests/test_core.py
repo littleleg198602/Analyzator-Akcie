@@ -44,8 +44,8 @@ def test_import_prices_portfolio_latest_snapshot_and_score_buy():
         assert summary.portfolio_profit == 141
         assert round(sum(r.share_pct for r in aggregate_by_symbol(current)), 6) == 100
         history = symbol_performance_history(positions)
-        assert [round(v, 1) for _, v in history["AAPL"]] == [5.0, 10.1]
-        assert [round(v, 1) for _, v in history["MSFT"]] == [20.0]
+        assert [round(v, 1) for _, v in history["AAPL"]] == [0.0, 5.1]
+        assert [round(v, 1) for _, v in history["MSFT"]] == [0.0]
         analysis = Analysis("a1", datetime(2026, 1, 1, 10), "AAPL", "BUY", 14, 100.1, 0, 0, "", "", "OPEN", "")
         result = evaluate_analyses(cfg, [analysis], prices)[0]
         assert round(result.return_1d or 0, 2) == 3.0
