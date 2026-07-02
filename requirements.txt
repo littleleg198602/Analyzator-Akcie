@@ -1,0 +1,1 @@
+# Aplikace používá pouze standardní knihovnu Pythonu (tkinter, csv, json).
