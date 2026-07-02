@@ -10,6 +10,8 @@ DATETIME_FORMATS = (
     "%Y-%m-%d %H:%M:%S",
     "%Y.%m.%d %H:%M:%S",
     "%d.%m.%Y %H:%M:%S",
+    "%m/%d/%Y %I:%M %p",
+    "%m/%d/%Y %H:%M:%S",
     "%Y-%m-%dT%H:%M:%S",
     "%Y-%m-%d",
     "%d.%m.%Y",
@@ -53,22 +55,28 @@ def parse_datetime(value: object) -> datetime | None:
 
 
 def read_semicolon_csv(path: Path) -> list[dict[str, str]]:
-    if not path.exists():
+    if not path.exists() or path.stat().st_size == 0:
         return []
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle, delimiter=";"))
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            return list(csv.DictReader(handle, delimiter=";"))
+    except PermissionError as exc:
+        raise PermissionError("Soubor je pravděpodobně otevřený v Excelu") from exc
 
 
 def write_semicolon_csv(path: Path, fieldnames: Iterable[str], rows: Iterable[dict[str, object]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(fieldnames), delimiter=";")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(fieldnames), delimiter=";", extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+    except PermissionError as exc:
+        raise PermissionError("Soubor je pravděpodobně otevřený v Excelu") from exc
 
 
 def fmt_pct(value: float | None) -> str:
     if value is None:
         return ""
-    return f"{value:.2f} %"
+    return f"{value:+.2f} %"

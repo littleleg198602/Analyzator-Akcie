@@ -13,14 +13,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
-    from openpyxl.worksheet.datavalidation import DataValidation
-    from openpyxl.worksheet.table import Table, TableStyleInfo
-except ImportError as exc:  # pragma: no cover - uživatelská chyba prostředí
-    raise SystemExit("Chybí openpyxl. Nainstaluj ho příkazem: pip install openpyxl") from exc
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 OUTPUT = Path("dist/MT5_Analysis_Portfolio_Dashboard.xlsx")
 

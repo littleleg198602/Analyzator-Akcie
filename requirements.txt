@@ -1,1 +1,2 @@
-# Aplikace používá pouze standardní knihovnu Pythonu (tkinter, csv, json).
+openpyxl>=3.1
+pytest>=8.0

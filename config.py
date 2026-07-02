@@ -8,8 +8,6 @@ from pathlib import Path
 
 APP_NAME = "MT5 analyzátor akcií"
 CONFIG_FILE = Path("config.json")
-DATA_DIR = Path("data")
-ANALYSES_FILE = DATA_DIR / "analyzy.csv"
 
 
 @dataclass
@@ -18,6 +16,7 @@ class AppConfig:
     analysis_prices_file: str = "MT5_Analysis_Prices.csv"
     portfolio_positions_file: str = "MT5_Portfolio_Positions.csv"
     tracked_symbols_file: str = "TrackedSymbols.csv"
+    analyses_file: str = "Analyses.csv"
     buy_success_pct: float = 3.0
     buy_fail_pct: float = -3.0
     short_success_pct: float = 3.0
@@ -29,11 +28,18 @@ class AppConfig:
     @property
     def expanded_mt5_folder(self) -> Path:
         expanded = os.path.expandvars(self.mt5_common_folder)
+        # Na Linuxu os.path.expandvars nerozbaluje vždy windows zápis %APPDATA%,
+        # na Windows ano. Tento fallback nechává Windows chování zachované.
+        if "%APPDATA%" in expanded and os.environ.get("APPDATA"):
+            expanded = expanded.replace("%APPDATA%", os.environ["APPDATA"])
         return Path(expanded).expanduser()
+
+    @property
+    def analyses_path(self) -> Path:
+        return self.expanded_mt5_folder / self.analyses_file
 
 
 def load_config() -> AppConfig:
-    DATA_DIR.mkdir(exist_ok=True)
     if not CONFIG_FILE.exists():
         cfg = AppConfig()
         save_config(cfg)

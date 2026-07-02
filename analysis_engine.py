@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from config import ANALYSES_FILE, AppConfig
+from config import AppConfig
 from mt5_data import PriceSnapshot
 from utils import parse_datetime, parse_float, read_semicolon_csv, write_semicolon_csv
 
@@ -53,7 +53,9 @@ class AnalysisResult:
 
 
 def load_analyses(config: AppConfig) -> list[Analysis]:
-    rows = read_semicolon_csv(ANALYSES_FILE)
+    if not config.expanded_mt5_folder.exists():
+        return []
+    rows = read_semicolon_csv(config.analyses_path)
     analyses: list[Analysis] = []
     for row in rows:
         dt = parse_datetime(row.get("AnalysisDateTime"))
@@ -79,7 +81,7 @@ def load_analyses(config: AppConfig) -> list[Analysis]:
     return analyses
 
 
-def save_analyses(analyses: list[Analysis]) -> None:
+def save_analyses(config: AppConfig, analyses: list[Analysis]) -> None:
     rows = []
     for item in analyses:
         rows.append({
@@ -96,12 +98,12 @@ def save_analyses(analyses: list[Analysis]) -> None:
             "Status": item.status,
             "Notes": item.notes,
         })
-    write_semicolon_csv(ANALYSES_FILE, ANALYSIS_FIELDS, rows)
+    write_semicolon_csv(config.analyses_path, ANALYSIS_FIELDS, rows)
 
 
 def add_analysis(config: AppConfig, symbol: str, verdict: str, horizon_days: int | None, start_price: float, reason: str, risk: str = "", notes: str = "") -> Analysis:
     item = Analysis(
-        analysis_id=str(uuid4()),
+        analysis_id=datetime.now().strftime("%Y%m%d-%H%M%S-") + symbol.strip().upper(),
         analysis_datetime=datetime.now().replace(microsecond=0),
         symbol=symbol.strip().upper(),
         verdict=verdict.strip().upper(),
@@ -116,9 +118,28 @@ def add_analysis(config: AppConfig, symbol: str, verdict: str, horizon_days: int
     )
     analyses = load_analyses(config)
     analyses.append(item)
-    save_analyses(analyses)
+    save_analyses(config, analyses)
     return item
 
+
+
+def update_analysis(config: AppConfig, updated: Analysis) -> bool:
+    analyses = load_analyses(config)
+    for index, item in enumerate(analyses):
+        if item.analysis_id == updated.analysis_id:
+            analyses[index] = updated
+            save_analyses(config, analyses)
+            return True
+    return False
+
+
+def delete_analysis(config: AppConfig, analysis_id: str) -> bool:
+    analyses = load_analyses(config)
+    kept = [item for item in analyses if item.analysis_id != analysis_id]
+    if len(kept) == len(analyses):
+        return False
+    save_analyses(config, kept)
+    return True
 
 def first_price_at_or_after(prices: list[PriceSnapshot], symbol: str, moment: datetime) -> float | None:
     candidates = [p for p in prices if p.symbol == symbol and p.price_used and p.snapshot_time >= moment]
