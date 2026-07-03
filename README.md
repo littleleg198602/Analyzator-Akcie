@@ -38,3 +38,5 @@ CSV soubory nenechávej otevřené v Excelu. MT5 by do zamčeného souboru nemus
 - Export do Excelu vytvoří `.xlsx` přímo z aplikace tlačítkem `Export do Excelu`.
 
 - Dashboard kreslí časový graf „Porovnání zisku/ztráty akcií v portfoliu v čase“, kde je každá akcie normalizovaná na stejnou startovací čáru 0 % ve svém prvním snapshotu a pak je vidět, jak se postupně rozevírá do plusu nebo mínusu. Dashboard je scrollovatelný, takže jsou vidět i spodní grafy a tabulky.
+
+- Tabulky se seznamy akcií na dashboardu mají vlastní scrollbary a časový graf lze filtrovat tlačítkem `Vybrat akcie do časového grafu`; bez výběru se zobrazují všechny symboly z historie portfolia.

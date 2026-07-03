@@ -28,6 +28,7 @@ class MT5AnalyzerApp(tk.Tk):
         self.current_positions = []
         self.analyses = []
         self.results = []
+        self.selected_history_symbols: set[str] = set()
         self.log_var = tk.StringVar(value="")
         self._build_ui()
         self.update_expanded_path_label()
@@ -105,16 +106,21 @@ class MT5AnalyzerApp(tk.Tk):
         self.analysis_metric_var = tk.StringVar(value=ANALYSIS_METRICS[-1])
         ttk.Combobox(controls, textvariable=self.analysis_metric_var, values=ANALYSIS_METRICS, state="readonly", width=24).pack(side="left", padx=4)
         ttk.Button(controls, text="Překreslit grafy", command=self._redraw_dashboard).pack(side="left", padx=4)
+        ttk.Button(controls, text="Vybrat akcie do časového grafu", command=self.open_history_symbol_dialog).pack(side="left", padx=4)
 
         # Koláč je hned nahoře, aby bylo vidět, z čeho se portfolio skládá.
         self.share_canvas = tk.Canvas(parent, height=300, bg="white")
         self.share_canvas.grid(row=2, column=0, sticky="nsew", padx=4, pady=4)
         self.performance_canvas = tk.Canvas(parent, height=300, bg="white")
         self.performance_canvas.grid(row=2, column=1, sticky="nsew", padx=4, pady=4)
-        self.share_tree = self._make_tree(parent, ("Symbol", "Hodnota", "Podíl %", "Profit", "% výkon"), height=7)
-        self.share_tree.grid(row=3, column=0, sticky="nsew", padx=4)
-        self.symbol_perf_tree = self._make_tree(parent, ("Symbol", "Pozic", "Weighted %", "Profit", "Hodnota", "Best %", "Worst %"), height=7)
-        self.symbol_perf_tree.grid(row=3, column=1, sticky="nsew", padx=4)
+        share_frame = ttk.Frame(parent)
+        share_frame.grid(row=3, column=0, sticky="nsew", padx=4)
+        self.share_tree = self._make_tree(share_frame, ("Symbol", "Hodnota", "Podíl %", "Profit", "% výkon"), height=7)
+        self._pack_tree_with_scrollbar(share_frame, self.share_tree)
+        perf_frame = ttk.Frame(parent)
+        perf_frame.grid(row=3, column=1, sticky="nsew", padx=4)
+        self.symbol_perf_tree = self._make_tree(perf_frame, ("Symbol", "Pozic", "Weighted %", "Profit", "Hodnota", "Best %", "Worst %"), height=7)
+        self._pack_tree_with_scrollbar(perf_frame, self.symbol_perf_tree)
         self.symbol_history_canvas = tk.Canvas(parent, height=360, bg="white")
         self.symbol_history_canvas.grid(row=4, column=0, columnspan=2, sticky="nsew", padx=4, pady=8)
         self.analysis_canvas = tk.Canvas(parent, height=280, bg="white")
@@ -161,7 +167,14 @@ class MT5AnalyzerApp(tk.Tk):
         for col in columns:
             tree.heading(col, text=col)
             tree.column(col, width=110, anchor="w")
+        tree.bind("<MouseWheel>", lambda event: tree.yview_scroll(int(-1 * (event.delta / 120)), "units"))
         return tree
+
+    def _pack_tree_with_scrollbar(self, parent: ttk.Frame, tree: ttk.Treeview) -> None:
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
     def log(self, message: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
@@ -467,14 +480,52 @@ class MT5AnalyzerApp(tk.Tk):
         canvas.create_line(*pts, fill="#2f80ed", width=2)
         canvas.create_text(45,35,anchor="w",text=f"max {mx:.2f}"); canvas.create_text(45,h-25,anchor="w",text=f"min {mn:.2f}")
 
+    def open_history_symbol_dialog(self) -> None:
+        symbols = sorted({row.symbol for row in aggregate_by_symbol(self.current_positions)} | set(getattr(build_summary(self.results, self.current_positions, self.positions), "symbol_performance_history", {}).keys()))
+        if not symbols:
+            messagebox.showinfo(APP_NAME, "Nejsou dostupné žádné symboly z portfolia.")
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title("Vybrat akcie do časového grafu")
+        ttk.Label(dialog, text="Vyber akcie pro graf ziskovosti v čase. Pokud nevybereš nic, zobrazí se všechny.").pack(anchor="w", padx=8, pady=6)
+        listbox = tk.Listbox(dialog, selectmode="multiple", height=18, width=32, exportselection=False)
+        listbox.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=6)
+        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=listbox.yview)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="left", fill="y", pady=6)
+        for index, symbol in enumerate(symbols):
+            listbox.insert("end", symbol)
+            if not self.selected_history_symbols or symbol in self.selected_history_symbols:
+                listbox.selection_set(index)
+
+        buttons = ttk.Frame(dialog)
+        buttons.pack(side="right", fill="y", padx=8, pady=6)
+
+        def select_all() -> None:
+            listbox.selection_set(0, "end")
+
+        def clear_all() -> None:
+            listbox.selection_clear(0, "end")
+
+        def apply_selection() -> None:
+            self.selected_history_symbols = {symbols[i] for i in listbox.curselection()}
+            dialog.destroy()
+            self._redraw_dashboard()
+
+        ttk.Button(buttons, text="Vybrat vše", command=select_all).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Zrušit výběr", command=clear_all).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Použít", command=apply_selection).pack(fill="x", pady=12)
+
     def _draw_multi_line_chart(self, canvas: tk.Canvas, series: dict[str, list[tuple]], current_rows, title: str) -> None:
         canvas.delete("all"); canvas.update_idletasks(); w=max(canvas.winfo_width(), 700); h=max(canvas.winfo_height(), 280)
         canvas.create_text(w/2, 16, text=title, font=("Segoe UI", 11, "bold"))
         if not series:
             canvas.create_text(w/2, h/2, text="Žádná historie procentuálního výkonu")
             return
-        preferred = [r.symbol for r in sorted(current_rows, key=lambda r: r.share_pct, reverse=True)[:8]]
-        symbols = preferred or sorted(series.keys())[:8]
+        if self.selected_history_symbols:
+            symbols = [symbol for symbol in sorted(self.selected_history_symbols) if symbol in series]
+        else:
+            symbols = sorted(series.keys())
         points = [(t, v) for sym in symbols for t, v in series.get(sym, [])]
         if len(points) < 2:
             canvas.create_text(w/2, h/2, text="Málo bodů pro časový graf")
