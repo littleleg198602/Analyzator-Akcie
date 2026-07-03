@@ -32,8 +32,7 @@ Výpočet: Vytvořit vzorky cen a analýz, kde SHORT dosáhne HIT/MISS, AVOID do
 Zdroj dat: Testovací CSV data v dočasné složce.
 Kde v UI: Bez UI; testovací vrstva `tests/`.
 Acceptance test: `pytest` obsahuje explicitní asserty pro SHORT HIT/MISS, AVOID HIT/MISS a WATCH ONLY.
-Stav: Navrženo
-
+Stav:  Schváleno
 ---
 ID: QA-20260703-002
 Název: Otestovat chybějící a prázdné MT5 CSV soubory
@@ -47,7 +46,7 @@ Výpočet: Loader má vracet prázdné seznamy a dashboard má zobrazit nulové 
 Zdroj dat: Dočasné testovací složky bez CSV nebo s prázdnými CSV.
 Kde v UI: Refresh / import dat.
 Acceptance test: `pytest` ověří, že loadery a summary builder nespadnou na chybějících a prázdných souborech.
-Stav: Navrženo
+Stav:  Schváleno
 
 ---
 ID: IMP-20260703-001
@@ -62,7 +61,7 @@ Výpočet: Top 1 / Top 3 / Top 5 share a HHI = SUM((PortfolioSharePct/100)^2). P
 Zdroj dat: `MT5_Portfolio_Positions.csv`, aktuální snapshot.
 Kde v UI: Dashboard summary + tabulka `Podíl v portfoliu`.
 Acceptance test: Testovací portfolio se známými váhami vrátí očekávané Top 3 share a HHI.
-Stav: Navrženo
+Stav:  Schváleno
 
 ---
 ID: IMP-20260703-002
@@ -92,7 +91,7 @@ Výpočet: Pro každý SnapshotTime spočítat TotalProfit, průběžné maximum
 Zdroj dat: `MT5_Portfolio_Positions.csv`, historie snapshotů.
 Kde v UI: Dashboard vedle grafu `Vývoj profitu MT5 portfolia v čase`.
 Acceptance test: Historie profitů `[100, 150, 120, 180]` vrátí drawdown `[0, 0, -30, 0]`.
-Stav: Navrženo
+Stav: Zamítnuto
 
 ---
 ID: IMP-20260703-004
@@ -107,7 +106,7 @@ Výpočet: Pro každý symbol z aktuálního snapshotu použít agregovanou hodn
 Zdroj dat: `MT5_Portfolio_Positions.csv`, aktuální snapshot.
 Kde v UI: Dashboard nebo nová sekce `Riziko pozic`.
 Acceptance test: Agregace více ticketů stejného symbolu vytvoří jeden bod s očekávanou hodnotou a weighted %.
-Stav: Navrženo
+Stav: Schváleno
 
 ---
 ID: IMP-20260703-005
@@ -122,7 +121,7 @@ Výpočet: Agregovat Return1D, Return5D, Return14D, HorizonReturnPct podle Verdi
 Zdroj dat: vypočtené `AnalysisResult` z `analysis_engine.py`.
 Kde v UI: Záložka `Výsledky analýz` nebo Dashboard summary.
 Acceptance test: Vzorek analýz s pevnými returny vrátí očekávané průměry podle Verdict.
-Stav: Navrženo
+Stav: Schváleno
 
 ---
 ID: IMP-20260703-006
@@ -167,7 +166,7 @@ Výpočet: Alpha = StockReturnPct - BenchmarkReturnPct pro stejný AnalysisDateT
 Zdroj dat: `MT5_Analysis_Prices.csv`, pokud EA sleduje benchmark symboly; jinak doplnit benchmark do TrackedSymbols.
 Kde v UI: `Výsledky analýz` a dashboard hit rate podle alpha.
 Acceptance test: Vzorek akcie + benchmarku se známými cenami vrátí správnou alpha hodnotu.
-Stav: Navrženo
+Stav: Schváleno
 
 ---
 ID: IMP-20260703-009
@@ -182,7 +181,7 @@ Výpočet: HoldingDays = LatestSnapshotTime - OpenTime; agregovat max, průměr 
 Zdroj dat: `MT5_Portfolio_Positions.csv`, aktuální snapshot.
 Kde v UI: Záložka `MT5 portfolio` a Dashboard summary.
 Acceptance test: Pozice s OpenTime před 10 dny vrátí HoldingDays přibližně 10.
-Stav: Navrženo
+Stav: Zamítnuto
 
 ---
 ID: IMP-20260703-010
@@ -197,4 +196,4 @@ Výpočet: Exportovat LatestSnapshotTime, TotalProfit, OpenPositions, TotalExpos
 Zdroj dat: `DashboardSummary`, aktuální snapshot.
 Kde v UI: Tlačítko `Export do Excelu`.
 Acceptance test: Exportovaný list obsahuje stejné hodnoty jako `build_summary`.
-Stav: Navrženo
+Stav: Schváleno
