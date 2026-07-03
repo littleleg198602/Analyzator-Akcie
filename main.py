@@ -29,6 +29,7 @@ class MT5AnalyzerApp(tk.Tk):
         self.analyses = []
         self.results = []
         self.selected_history_symbols: set[str] = set()
+        self.tree_sort_states: dict[tuple[int, str], bool] = {}
         self.log_var = tk.StringVar(value="")
         self._build_ui()
         self.update_expanded_path_label()
@@ -165,7 +166,7 @@ class MT5AnalyzerApp(tk.Tk):
     def _make_tree(self, parent, columns: tuple[str, ...], height: int = 18) -> ttk.Treeview:
         tree = ttk.Treeview(parent, columns=columns, show="headings", height=height)
         for col in columns:
-            tree.heading(col, text=col)
+            tree.heading(col, text=col, command=lambda c=col, t=tree: self._sort_treeview_column(t, c))
             tree.column(col, width=110, anchor="w")
         tree.bind("<MouseWheel>", lambda event: tree.yview_scroll(int(-1 * (event.delta / 120)), "units"))
         return tree
@@ -175,6 +176,23 @@ class MT5AnalyzerApp(tk.Tk):
         tree.configure(yscrollcommand=scrollbar.set)
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+    def _sort_treeview_column(self, tree: ttk.Treeview, column: str) -> None:
+        key = (id(tree), column)
+        descending = self.tree_sort_states.get(key, False)
+        self.tree_sort_states[key] = not descending
+        rows = [(tree.set(item, column), item) for item in tree.get_children("")]
+
+        def sort_value(row):
+            text = str(row[0]).replace("%", "").replace("+", "").replace(" ", "").replace(",", ".")
+            try:
+                return (0, float(text))
+            except ValueError:
+                return (1, str(row[0]).lower())
+
+        rows.sort(key=sort_value, reverse=descending)
+        for index, (_, item) in enumerate(rows):
+            tree.move(item, "", index)
 
     def log(self, message: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
@@ -460,7 +478,12 @@ class MT5AnalyzerApp(tk.Tk):
         canvas.create_text(w/2, 16, text=title, font=("Segoe UI", 11, "bold"))
         if not data:
             canvas.create_text(w/2, h/2, text="Žádná data"); return
-        items=list(data.items())[:20]; max_abs=max(abs(v) for _,v in items) or 1; zero=w/2; top=40; row_h=max(16,(h-55)/len(items))
+        items=list(data.items())
+        needed_h = max(280, 48 + len(items) * 28)
+        if int(canvas.cget("height")) != needed_h:
+            canvas.configure(height=needed_h)
+            h = needed_h
+        max_abs=max(abs(v) for _,v in items) or 1; zero=w/2; top=40; row_h=max(22,(h-65)/len(items))
         canvas.create_line(zero, top-5, zero, h-20, fill="#555")
         for i,(label,value) in enumerate(items):
             y=top+i*row_h; bar=(abs(value)/max_abs)*(w/2-90)
@@ -516,16 +539,30 @@ class MT5AnalyzerApp(tk.Tk):
         ttk.Button(buttons, text="Zrušit výběr", command=clear_all).pack(fill="x", pady=2)
         ttk.Button(buttons, text="Použít", command=apply_selection).pack(fill="x", pady=12)
 
+    def toggle_history_symbol(self, symbol: str, all_symbols: list[str]) -> None:
+        if not self.selected_history_symbols:
+            self.selected_history_symbols = set(all_symbols)
+        if symbol in self.selected_history_symbols:
+            self.selected_history_symbols.remove(symbol)
+        else:
+            self.selected_history_symbols.add(symbol)
+        self._redraw_dashboard()
+
     def _draw_multi_line_chart(self, canvas: tk.Canvas, series: dict[str, list[tuple]], current_rows, title: str) -> None:
         canvas.delete("all"); canvas.update_idletasks(); w=max(canvas.winfo_width(), 700); h=max(canvas.winfo_height(), 280)
         canvas.create_text(w/2, 16, text=title, font=("Segoe UI", 11, "bold"))
         if not series:
             canvas.create_text(w/2, h/2, text="Žádná historie procentuálního výkonu")
             return
+        all_symbols = sorted(series.keys())
         if self.selected_history_symbols:
             symbols = [symbol for symbol in sorted(self.selected_history_symbols) if symbol in series]
         else:
-            symbols = sorted(series.keys())
+            symbols = all_symbols
+        needed_h = max(360, 80 + max(1, len(symbols)) * 20)
+        if int(canvas.cget("height")) != needed_h:
+            canvas.configure(height=needed_h)
+            h = needed_h
         points = [(t, v) for sym in symbols for t, v in series.get(sym, [])]
         if len(points) < 2:
             canvas.create_text(w/2, h/2, text="Málo bodů pro časový graf")
@@ -546,11 +583,13 @@ class MT5AnalyzerApp(tk.Tk):
                 x = left + time_index[t] * (right-left) / max(1, len(times)-1)
                 y = bottom - (v - min_v) / span * (bottom-top)
                 pts.extend([x,y])
+            tag = f"history_symbol_{sym}"
             if len(pts) >= 4:
-                canvas.create_line(*pts, fill=colors[idx % len(colors)], width=2)
+                canvas.create_line(*pts, fill=colors[idx % len(colors)], width=2, tags=(tag,))
                 for x,y in zip(pts[0::2], pts[1::2]):
-                    canvas.create_oval(x-3, y-3, x+3, y+3, fill=colors[idx % len(colors)], outline="white")
-            canvas.create_text(right+12, top+idx*18, anchor="w", text=sym, fill=colors[idx % len(colors)])
+                    canvas.create_oval(x-3, y-3, x+3, y+3, fill=colors[idx % len(colors)], outline="white", tags=(tag,))
+            canvas.create_text(right+12, top+idx*18, anchor="w", text=sym, fill=colors[idx % len(colors)], tags=(tag,))
+            canvas.tag_bind(tag, "<Button-1>", lambda _event, symbol=sym, all_symbols=all_symbols: self.toggle_history_symbol(symbol, all_symbols))
         canvas.create_text(left, top-12, anchor="w", text=f"max {max_v:+.1f} %")
         canvas.create_text(left, bottom+16, anchor="w", text=f"min {min_v:+.1f} %")
         if times:
