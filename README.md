@@ -42,3 +42,5 @@ CSV soubory nenechávej otevřené v Excelu. MT5 by do zamčeného souboru nemus
 - Tabulky se seznamy akcií na dashboardu mají vlastní scrollbary a časový graf lze filtrovat tlačítkem `Vybrat akcie do časového grafu`; bez výběru se zobrazují všechny symboly z historie portfolia.
 
 - Sloupce v tabulkách lze řadit kliknutím na hlavičku; opakované kliknutí přepíná vzestupně/sestupně. V časovém grafu lze kliknout na název/čáru akcie a tím ji skrýt nebo znovu zobrazit.
+
+- Kliknutí na řádek akcie v tabulkách `Podíl v portfoliu` nebo `Výkon akcií v %` přidá/odebere daný symbol v časovém grafu ziskovosti.

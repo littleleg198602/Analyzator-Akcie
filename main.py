@@ -118,10 +118,12 @@ class MT5AnalyzerApp(tk.Tk):
         share_frame.grid(row=3, column=0, sticky="nsew", padx=4)
         self.share_tree = self._make_tree(share_frame, ("Symbol", "Hodnota", "Podíl %", "Profit", "% výkon"), height=7)
         self._pack_tree_with_scrollbar(share_frame, self.share_tree)
+        self.share_tree.bind("<ButtonRelease-1>", self._toggle_history_symbol_from_tree)
         perf_frame = ttk.Frame(parent)
         perf_frame.grid(row=3, column=1, sticky="nsew", padx=4)
         self.symbol_perf_tree = self._make_tree(perf_frame, ("Symbol", "Pozic", "Weighted %", "Profit", "Hodnota", "Best %", "Worst %"), height=7)
         self._pack_tree_with_scrollbar(perf_frame, self.symbol_perf_tree)
+        self.symbol_perf_tree.bind("<ButtonRelease-1>", self._toggle_history_symbol_from_tree)
         self.symbol_history_canvas = tk.Canvas(parent, height=360, bg="white")
         self.symbol_history_canvas.grid(row=4, column=0, columnspan=2, sticky="nsew", padx=4, pady=8)
         self.analysis_canvas = tk.Canvas(parent, height=280, bg="white")
@@ -502,6 +504,23 @@ class MT5AnalyzerApp(tk.Tk):
             x=40+i*(w-70)/(len(data)-1); y=h-35-(v-mn)/span*(h-70); pts.extend([x,y])
         canvas.create_line(*pts, fill="#2f80ed", width=2)
         canvas.create_text(45,35,anchor="w",text=f"max {mx:.2f}"); canvas.create_text(45,h-25,anchor="w",text=f"min {mn:.2f}")
+
+    def _toggle_history_symbol_from_tree(self, event) -> None:
+        tree = event.widget
+        if tree.identify_region(event.x, event.y) != "cell":
+            return
+        row_id = tree.identify_row(event.y)
+        if not row_id:
+            return
+        values = tree.item(row_id, "values")
+        if not values:
+            return
+        symbol = str(values[0]).strip()
+        if not symbol:
+            return
+        all_symbols = sorted(build_summary(self.results, self.current_positions, self.positions).symbol_performance_history.keys())
+        if symbol in all_symbols:
+            self.toggle_history_symbol(symbol, all_symbols)
 
     def open_history_symbol_dialog(self) -> None:
         symbols = sorted({row.symbol for row in aggregate_by_symbol(self.current_positions)} | set(getattr(build_summary(self.results, self.current_positions, self.positions), "symbol_performance_history", {}).keys()))
